@@ -1,0 +1,70 @@
+{
+  "projeto": "AlexaPatterns — Lista 03",
+  "notaMinima": 80,
+  "requisitos": [
+    {
+      "titulo": "Strategy",
+      "peso": 15,
+      "classe": "br.upe.alexapatterns.evaluation.Req01StrategyTest",
+      "testesEsperados": 6
+    },
+    {
+      "titulo": "Iterator",
+      "peso": 10,
+      "classe": "br.upe.alexapatterns.evaluation.Req02IteratorTest",
+      "testesEsperados": 7
+    },
+    {
+      "titulo": "State",
+      "peso": 25,
+      "classe": "br.upe.alexapatterns.evaluation.Req03StateTest",
+      "testesEsperados": 12
+    },
+    {
+      "titulo": "Observer",
+      "peso": 20,
+      "classe": "br.upe.alexapatterns.evaluation.Req04ObserverTest",
+      "testesEsperados": 14
+    },
+    {
+      "titulo": "Command",
+      "peso": 25,
+      "classe": "br.upe.alexapatterns.evaluation.Req05CommandTest",
+      "testesEsperados": 16
+    },
+    {
+      "titulo": "Estilo de código",
+      "peso": 5,
+      "tipo": "lint"
+    }
+  ],
+  "obrigatorios": [
+    {
+      "titulo": "Segurança",
+      "classe": "br.upe.alexapatterns.evaluation.ApiSecurityTest",
+      "testesEsperados": 8
+    },
+    {
+      "titulo": "Fluxo HTTP completo",
+      "classe": "br.upe.alexapatterns.evaluation.HttpFlowTest",
+      "testesEsperados": 4
+    }
+  ],
+  "arquivosPermitidos": [
+    "src/main/java/br/upe/alexapatterns/playback/strategy/SequentialPlaybackStrategy.java",
+    "src/main/java/br/upe/alexapatterns/playback/strategy/ShuffledPlaybackStrategy.java",
+    "src/main/java/br/upe/alexapatterns/playlist/iterator/PlaylistIterator.java",
+    "src/main/java/br/upe/alexapatterns/playback/state/StoppedState.java",
+    "src/main/java/br/upe/alexapatterns/playback/state/PlayingState.java",
+    "src/main/java/br/upe/alexapatterns/playback/state/PausedState.java",
+    "src/main/java/br/upe/alexapatterns/playback/observer/PlaybackEventPublisher.java",
+    "src/main/java/br/upe/alexapatterns/playback/observer/PlaybackPanel.java",
+    "src/main/java/br/upe/alexapatterns/playback/observer/PlaybackHistory.java",
+    "src/main/java/br/upe/alexapatterns/assistant/command/PlayCommand.java",
+    "src/main/java/br/upe/alexapatterns/assistant/command/PauseCommand.java",
+    "src/main/java/br/upe/alexapatterns/assistant/command/ResumeCommand.java",
+    "src/main/java/br/upe/alexapatterns/assistant/command/NextCommand.java",
+    "src/main/java/br/upe/alexapatterns/assistant/command/StopCommand.java",
+    "src/main/java/br/upe/alexapatterns/assistant/command/CommandQueue.java"
+  ]
+}
