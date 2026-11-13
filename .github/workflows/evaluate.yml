@@ -1,0 +1,94 @@
+name: Avaliação AlexaPatterns
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alexa-evaluation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    name: Avaliação oficial
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Obter a base oficial
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          path: official
+          persist-credentials: false
+
+      - name: Obter a entrega
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: submission
+          persist-credentials: false
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Avaliar a entrega
+        id: grade
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+          SUBMISSION_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 official/.github/evaluation/grade.py \
+            --project official \
+            --submission submission \
+            --output evaluation-results \
+            --pr "$PR_NUMBER" \
+            --revision "$SUBMISSION_SHA"
+
+      - name: Adicionar o resumo
+        if: always()
+        run: |
+          if [ -f evaluation-results/grade.md ]; then
+            cat evaluation-results/grade.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Salvar os relatórios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: alexa-evaluation
+          path: |
+            evaluation-results/
+            official/target/surefire-reports/
+            official/target/checkstyle-result.xml
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Conferir a aprovação
+        if: always()
+        env:
+          GRADE_OUTCOME: ${{ steps.grade.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          path = Path('evaluation-results/grade.json')
+          if os.environ['GRADE_OUTCOME'] != 'success' or not path.is_file():
+              sys.exit(1)
+          result = json.loads(path.read_text(encoding='utf-8'))['resultado']
+          sys.exit(0 if result['aprovado'] is True else 1)
+          PY
