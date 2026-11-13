@@ -6,19 +6,24 @@ import br.upe.alexapatterns.assistant.command.PlayCommand;
 import br.upe.alexapatterns.assistant.command.PlaybackCommand;
 import br.upe.alexapatterns.assistant.command.ResumeCommand;
 import br.upe.alexapatterns.assistant.command.StopCommand;
+import br.upe.alexapatterns.assistant.dto.CommandQueueResponse;
 import br.upe.alexapatterns.assistant.dto.CommandRequest;
 import br.upe.alexapatterns.assistant.dto.PlaybackModeRequest;
+import br.upe.alexapatterns.assistant.dto.QueueExecutionResponse;
+import br.upe.alexapatterns.assistant.session.PlaybackSession;
 import br.upe.alexapatterns.assistant.session.PlaybackSessions;
 import br.upe.alexapatterns.exception.NotFoundException;
 import br.upe.alexapatterns.playback.dto.PlaybackSnapshot;
 import br.upe.alexapatterns.playback.entity.PlaybackAction;
 import br.upe.alexapatterns.playback.entity.PlaybackMode;
+import br.upe.alexapatterns.playback.event.PlaybackEvent;
 import br.upe.alexapatterns.playback.state.MusicPlayer;
 import br.upe.alexapatterns.playback.strategy.PlaybackOrderStrategy;
 import br.upe.alexapatterns.playlist.repository.PlaylistRepository;
 import br.upe.alexapatterns.track.entity.Track;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -64,6 +69,95 @@ public class AssistantService {
       command.execute();
       return session.player().snapshot();
     });
+  }
+
+  /**
+   * Registra um pedido na fila da conta, sem executar o comando.
+   */
+  @Transactional(readOnly = true)
+  public CommandQueueResponse enqueue(CommandRequest request, String username) {
+    List<Track> tracks = resolveTracks(request, username);
+    return sessions.withSession(username, session -> {
+      session.queue().enqueue(createCommand(request.action(), session.player(), tracks));
+      return new CommandQueueResponse(session.queue().size());
+    });
+  }
+
+  /**
+   * Consulta a quantidade de pedidos pendentes na fila da conta.
+   */
+  public CommandQueueResponse queueStatus(String username) {
+    return sessions.withSession(
+            username, session -> new CommandQueueResponse(session.queue().size()));
+  }
+
+  /**
+   * Executa somente o primeiro pedido pendente da conta.
+   */
+  public QueueExecutionResponse executeNext(String username) {
+    return sessions.withSession(username, session -> {
+      int executed = session.queue().executeNext() ? 1 : 0;
+      return queueResult(session, executed);
+    });
+  }
+
+  /**
+   * Executa os pedidos da conta até esvaziar a fila ou ocorrer um erro.
+   */
+  public QueueExecutionResponse executeQueue(String username) {
+    return sessions.withSession(username, session -> {
+      int executed = session.queue().executeAll();
+      return queueResult(session, executed);
+    });
+  }
+
+  /**
+   * Descarta os pedidos pendentes da conta, sem executar os comandos.
+   */
+  public void clearQueue(String username) {
+    sessions.withSession(username, session -> {
+      session.queue().clear();
+      return null;
+    });
+  }
+
+  /**
+   * Consulta a última notificação recebida pelo painel da conta.
+   */
+  public Optional<PlaybackEvent> panel(String username) {
+    return sessions.withSession(username, session -> session.panel().getLatest());
+  }
+
+  /**
+   * Consulta os eventos recebidos pelo histórico da conta.
+   */
+  public List<PlaybackEvent> history(String username) {
+    return sessions.withSession(username, session -> session.history().getEvents());
+  }
+
+  /**
+   * Inscreve novamente o painel da conta para os próximos eventos.
+   */
+  public void subscribePanel(String username) {
+    sessions.withSession(username, session -> {
+      session.publisher().subscribe(session.panel());
+      return null;
+    });
+  }
+
+  /**
+   * Remove a inscrição do painel da conta, preservando sua última notificação.
+   */
+  public void unsubscribePanel(String username) {
+    sessions.withSession(username, session -> {
+      session.publisher().unsubscribe(session.panel());
+      return null;
+    });
+  }
+
+  private QueueExecutionResponse queueResult(PlaybackSession session, int executed) {
+    return new QueueExecutionResponse(
+            executed, session.queue().size(), session.player().snapshot());
   }
 
   private List<Track> resolveTracks(CommandRequest request, String username) {
